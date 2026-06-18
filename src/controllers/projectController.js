@@ -6,7 +6,7 @@ const getProjects = async (req, res) => {
   try {
     const baseUrl = getBaseUrl(req)
     const projects = await Project.find().sort({ id: 1 }).select('-__v -_id -createdAt -updatedAt')
-    
+
     // Convert image filenames back to full URLs
     const projectsWithUrls = projects.map(project => {
       const projectObj = project.toObject()
@@ -16,7 +16,7 @@ const getProjects = async (req, res) => {
         images: projectObj.images.map(img => `${baseUrl}/uploads/${img}`),
       }
     })
-    
+
     res.status(200).json({
       success: true,
       count: projectsWithUrls.length,
@@ -82,7 +82,7 @@ const addProject = async (req, res) => {
       title,
       category,
       filter,
-      image: mainImageUrl,
+      image: mainImageFilename,
       images: allImages,
       description,
       longDescription,

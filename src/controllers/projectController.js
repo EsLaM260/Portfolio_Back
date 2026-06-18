@@ -4,14 +4,26 @@ const getBaseUrl = require('../config/url')
 // GET /api/projects
 const getProjects = async (req, res) => {
   try {
+    const baseUrl = getBaseUrl(req)
     const projects = await Project.find().sort({ id: 1 }).select('-__v -_id -createdAt -updatedAt')
+    
+    // Convert image filenames back to full URLs
+    const projectsWithUrls = projects.map(project => {
+      const projectObj = project.toObject()
+      return {
+        ...projectObj,
+        image: `${baseUrl}/uploads/${projectObj.image}`,
+        images: projectObj.images.map(img => `${baseUrl}/uploads/${img}`),
+      }
+    })
+    
     res.status(200).json({
       success: true,
-      count: projects.length,
-      data: projects,
+      count: projectsWithUrls.length,
+      data: projectsWithUrls,
     })
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message })
+    return res.status(500).json({ success: false, message: error.message })
   }
 }
 
@@ -27,17 +39,17 @@ const addProject = async (req, res) => {
       return res.status(400).json({ success: false, message: 'A main cover image is required.' })
     }
 
-    // Main cover image → stored as a full URL string
-    const mainImageUrl = `${baseUrl}/uploads/${req.files['image'][0].filename}`
+    // Main cover image → stored as filename only
+    const mainImageFilename = req.files['image'][0].filename
 
-    // Gallery images → stored as an array of full URL strings
-    const galleryImageUrls = req.files['images']
-      ? req.files['images'].map((f) => `${baseUrl}/uploads/${f.filename}`)
+    // Gallery images → stored as an array of filenames only
+    const galleryImageFilenames = req.files['images']
+      ? req.files['images'].map((f) => f.filename)
       : []
 
     // The `images` array always starts with the main image, matching the
     // original frontend format where images[0] === image (the hero shot)
-    const allImages = [mainImageUrl, ...galleryImageUrls]
+    const allImages = [mainImageFilename, ...galleryImageFilenames]
 
     // ── Text fields ──────────────────────────────────────────────────────────
     // technologies and useCases arrive as JSON strings in multipart form-data
@@ -87,7 +99,11 @@ const addProject = async (req, res) => {
     delete result.createdAt
     delete result.updatedAt
 
-    res.status(201).json({
+    // Build full URLs for response
+    result.image = `${baseUrl}/uploads/${result.image}`
+    result.images = result.images.map(img => `${baseUrl}/uploads/${img}`)
+
+    return res.status(201).json({
       success: true,
       data: result,
     })
